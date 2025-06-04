@@ -29,7 +29,10 @@
 			Vector3Int threadGroupSizes = GetThreadGroupSizes(cs, kernelIndex);
 			int numGroupsX = Mathf.CeilToInt(numIterationsX / (float)threadGroupSizes.x);
 			int numGroupsY = Mathf.CeilToInt(numIterationsY / (float)threadGroupSizes.y);
-			int numGroupsZ = Mathf.CeilToInt(numIterationsZ / (float)threadGroupSizes.y);
+			int numGroupsZ = Mathf.CeilToInt(numIterationsZ / (float)threadGroupSizes.z); // FIXED: was using threadGroupSizes.y
+			
+			Debug.Log($"[COMPUTE_HELPER] Dispatching kernel {kernelIndex}: iterations({numIterationsX},{numIterationsY},{numIterationsZ}) threadGroups({threadGroupSizes.x},{threadGroupSizes.y},{threadGroupSizes.z}) groups({numGroupsX},{numGroupsY},{numGroupsZ})");
+			
 			cs.Dispatch(kernelIndex, numGroupsX, numGroupsY, numGroupsZ);
 		}
 
@@ -121,6 +124,30 @@
 				texture.graphicsFormat = format;
 				texture.enableRandomWrite = true;
 
+				texture.autoGenerateMips = false;
+				texture.Create();
+			}
+			texture.wrapMode = TextureWrapMode.Clamp;
+			texture.filterMode = filterMode;
+		}
+		public static void CreateRenderTexture3D(ref RenderTexture texture, int width, int height, int depth)
+		{
+			CreateRenderTexture3D(ref texture, width, height, depth, defaultFilterMode, defaultGraphicsFormat);
+		}
+
+		public static void CreateRenderTexture3D(ref RenderTexture texture, int width, int height, int depth, FilterMode filterMode, GraphicsFormat format)
+		{
+			if (texture == null || !texture.IsCreated() || texture.width != width || texture.height != height || texture.volumeDepth != depth || texture.graphicsFormat != format)
+			{
+				if (texture != null)
+				{
+					texture.Release();
+				}
+				texture = new RenderTexture(width, height, 0);
+				texture.dimension = UnityEngine.Rendering.TextureDimension.Tex3D;
+				texture.volumeDepth = depth;
+				texture.graphicsFormat = format;
+				texture.enableRandomWrite = true;
 				texture.autoGenerateMips = false;
 				texture.Create();
 			}

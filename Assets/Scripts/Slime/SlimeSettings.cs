@@ -7,8 +7,10 @@ public class SlimeSettings : ScriptableObject
 {
 	[Header("Simulation Settings")]
 	[Min(1)] public int stepsPerFrame = 1;
+	[Header("World Dimensions")]
 	public int width = 1280;
 	public int height = 720;
+	public int depth = 100;
 	public int numAgents = 100;
 	public Simulation.SpawnMode spawnMode;
 

@@ -14,12 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   stepsPerFrame: 2
   width: 1920
-  height: 1080
+  height: 1020
+  depth: 1
   numAgents: 25000
   spawnMode: 2
-  trailWeight: 12
-  decayRate: 0.5
-  diffuseRate: 3
+  trailWeight: 120000
+  decayRate: 0
+  diffuseRate: 30000
   speciesSettings:
   - moveSpeed: 70
     turnSpeed: 30

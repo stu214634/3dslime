@@ -3,8 +3,10 @@ Shader "Custom/Raymarch"
     Properties
     {
         _VolumeTex ("3D Texture", 3D) = "white" {}
-        _StepCount ("Step Count", Range(8, 256)) = 64
-        _Density ("Density", Range(0.1, 10)) = 5.0
+        _StepCount ("Step Count", Range(32, 256)) = 96
+        _Density ("Density", Range(0.5, 20)) = 8.0
+        _Color ("Color", Color) = (1,1,1,1)
+        _Absorption ("Absorption", Range(0.1, 5)) = 1.0
     }
     SubShader
     {
