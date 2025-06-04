@@ -1,0 +1,29 @@
+#pragma kernel CSMain
+
+RWTexture3D<float4> Result;
+float _TimeDelta;
+
+[numthreads(8,8,4)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    // Calculate normalized position
+    float3 pos = float3(id) / float3(64, 64, 64);
+    
+    // Create animated noise pattern
+    float noise = sin(20.0 * pos.x + _TimeDelta) *
+                 cos(15.0 * pos.y + _TimeDelta) *
+                 sin(12.0 * pos.z + _TimeDelta);
+    
+    float sphere = distance(pos, float3(0.5, 0.5, 0.5));
+    float sphereMask = 1.0 - saturate(sphere * 2.0);
+    
+    // Combine effects - separate color from density
+    float4 color = float4(
+        1.0,            
+        noise,              
+        0.0,            
+        sphereMask
+    );
+    
+    Result[id] = color;
+}

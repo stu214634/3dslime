@@ -1,0 +1,4 @@
+repository "3DSlime/3DSlime@9072262620804@cloud"
+  path "/"
+    br "/main"
+    co "/main"
