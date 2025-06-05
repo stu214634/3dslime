@@ -3,6 +3,7 @@
 struct Agent {
 	float3 position;
 	float angle;
+	float pitchAngle;  // New: vertical angle for 3D sensing
 	int4 speciesMask;
 	int speciesIndex;
 };
@@ -52,9 +53,15 @@ float scaleToRange01(uint state)
 }
 
 
-float sense(Agent agent, SpeciesSettings settings, float sensorAngleOffset) {
+float sense(Agent agent, SpeciesSettings settings, float sensorAngleOffset, float sensorPitchOffset) {
 	float sensorAngle = agent.angle + sensorAngleOffset;
-	float3 sensorDir = float3(cos(sensorAngle), sin(sensorAngle), 0);
+	float sensorPitch = agent.pitchAngle + sensorPitchOffset;
+	// Create 3D sensor direction using both horizontal and pitch angles
+	float3 sensorDir = float3(
+		cos(sensorAngle) * cos(sensorPitch),
+		sin(sensorAngle) * cos(sensorPitch),
+		sin(sensorPitch)
+	);
 
 	float3 sensorPos = agent.position + sensorDir * settings.sensorOffsetDst;
 	int sensorCentreX = (int) sensorPos.x;
@@ -93,54 +100,88 @@ void Update (uint3 id : SV_DispatchThreadID)
 
 	uint random = hash(pos.y * width + pos.x + pos.z + hash(id.x + time * 100000));
 
-	// Steer based on sensory data
+	// Steer based on sensory data - TRUE homogeneous 3D sensing
 	float sensorAngleRad = settings.sensorAngleDegrees * (3.1415 / 180);
-	float weightForward = sense(agent, settings, 0);
-	float weightLeft = sense(agent, settings, sensorAngleRad);
-	float weightRight = sense(agent, settings, -sensorAngleRad);
-
+	float turnSpeed = settings.turnSpeed * 2 * 3.1415;
+	
+	// HORIZONTAL AXIS: Forward/Left/Right sensing
+	float weightForwardH = sense(agent, settings, 0, 0);
+	float weightLeft = sense(agent, settings, sensorAngleRad, 0);
+	float weightRight = sense(agent, settings, -sensorAngleRad, 0);
 	
 	float randomSteerStrength = scaleToRange01(random);
-	float turnSpeed = settings.turnSpeed * 2 * 3.1415;
-
-	// Continue in same direction
-	if (weightForward > weightLeft && weightForward > weightRight) {
+	
+	// Horizontal steering logic
+	if (weightForwardH > weightLeft && weightForwardH > weightRight) {
 		agents[id.x].angle += 0;
 	}
-	else if (weightForward < weightLeft && weightForward < weightRight) {
+	else if (weightForwardH < weightLeft && weightForwardH < weightRight) {
 		agents[id.x].angle += (randomSteerStrength - 0.5) * 2 * turnSpeed * deltaTime;
 	}
-	// Turn right
 	else if (weightRight > weightLeft) {
 		agents[id.x].angle -= randomSteerStrength * turnSpeed * deltaTime;
 	}
-	// Turn left
 	else if (weightLeft > weightRight) {
 		agents[id.x].angle += randomSteerStrength * turnSpeed * deltaTime;
 	}
 
-
-	// Update position - FIXED: Add random Z movement for 3D
-	float2 direction = float2(cos(agent.angle), sin(agent.angle));
+	// VERTICAL AXIS: Forward/Up/Down sensing (IDENTICAL logic)
+	float weightForwardV = sense(agent, settings, 0, 0);
+	float weightUp = sense(agent, settings, 0, sensorAngleRad);
+	float weightDown = sense(agent, settings, 0, -sensorAngleRad);
+	
 	random = hash(random);
-	float zMovement = (scaleToRange01(random) - 0.5) * 0.1; // Small random Z movement
-	float3 newPos = agent.position + float3(direction.x, direction.y, zMovement) * deltaTime * settings.moveSpeed;
+	randomSteerStrength = scaleToRange01(random);
+	
+	// Vertical steering logic (IDENTICAL to horizontal)
+	if (weightForwardV > weightUp && weightForwardV > weightDown) {
+		agents[id.x].pitchAngle += 0;
+	}
+	else if (weightForwardV < weightUp && weightForwardV < weightDown) {
+		agents[id.x].pitchAngle += (randomSteerStrength - 0.5) * 2 * turnSpeed * deltaTime;
+	}
+	else if (weightDown > weightUp) {
+		agents[id.x].pitchAngle -= randomSteerStrength * turnSpeed * deltaTime;
+	}
+	else if (weightUp > weightDown) {
+		agents[id.x].pitchAngle += randomSteerStrength * turnSpeed * deltaTime;
+	}
+	
+	// Clamp pitch angle to reasonable range
+	agents[id.x].pitchAngle = clamp(agents[id.x].pitchAngle, -1.57, 1.57); // ±90 degrees
+
+
+	// Update position - TRUE 3D movement using both angles
+	float3 direction = float3(
+		cos(agent.angle) * cos(agent.pitchAngle),
+		sin(agent.angle) * cos(agent.pitchAngle),
+		sin(agent.pitchAngle)
+	);
+	float3 newPos = agent.position + direction * deltaTime * settings.moveSpeed;
 
 	
 	// Clamp position to 3D volume boundaries
 	if (newPos.x < 0 || newPos.x >= width || newPos.y < 0 || newPos.y >= height || newPos.z < 0 || newPos.z >= depth) {
 		random = hash(random);
 		float randomAngle = scaleToRange01(random) * 2 * 3.1415;
+		random = hash(random);
+		float randomPitch = (scaleToRange01(random) - 0.5) * 3.1415; // ±90 degrees
 
 		newPos.x = min(width-1, max(0, newPos.x));
 		newPos.y = min(height-1, max(0, newPos.y));
 		newPos.z = min(depth-1, max(0, newPos.z));
 		agents[id.x].angle = randomAngle;
+		agents[id.x].pitchAngle = randomPitch;
 	}
 	else {
 		int3 coord = int3(newPos);
 		float4 oldTrail = TrailMap[coord];
-		TrailMap[coord] = min(1, oldTrail + agent.speciesMask * trailWeight * deltaTime);
+		
+		// Get species color and write it to the trail map
+		SpeciesSettings agentSettings = speciesSettings[agent.speciesIndex];
+		float4 colorContribution = agentSettings.colour * trailWeight * deltaTime;
+		
+		TrailMap[coord] = min(1, oldTrail + colorContribution);
 	}
 	
 	agents[id.x].position = newPos;
@@ -152,7 +193,7 @@ float decayRate;
 float diffuseRate;
 RWTexture3D<float4> DiffusedTrailMap;
 
-[numthreads(8,8,1)]
+[numthreads(8,8,8)]
 void Diffuse (uint3 id : SV_DispatchThreadID)
 {
 	if (id.x < 0 || id.x >= (uint)width || id.y < 0 || id.y >= (uint)height || id.z < 0 || id.z >= (uint)depth) {
@@ -180,7 +221,6 @@ void Diffuse (uint3 id : SV_DispatchThreadID)
 	// Apply decay
 	blurredCol = max(0, blurredCol - decayRate * deltaTime);
 	
-	// FIXED: Actually write the computed result to DiffusedTrailMap
 	DiffusedTrailMap[id.xyz] = blurredCol;
 }
 

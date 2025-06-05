@@ -118,7 +118,8 @@ public class Simulation : MonoBehaviour
 				speciesMask = new Vector3Int((species == 1) ? 1 : 0, (species == 2) ? 1 : 0, (species == 3) ? 1 : 0);
 			}
 
-			agents[i] = new Agent() { position = startPos, angle = angle, speciesMask = speciesMask, speciesIndex = speciesIndex };
+			float randomPitch = (Random.value - 0.5f) * Mathf.PI; // Random pitch angle ±90 degrees
+			agents[i] = new Agent() { position = startPos, angle = angle, pitchAngle = randomPitch, speciesMask = speciesMask, speciesIndex = speciesIndex };
 		}
 
 		ComputeHelper.CreateAndSetBuffer<Agent>(ref agentBuffer, agents, compute, "agents", updateKernel);
@@ -265,6 +266,7 @@ public class Simulation : MonoBehaviour
 	{
 		public Vector3 position;
 		public float angle;
+		public float pitchAngle;  // New: vertical angle for 3D sensing
 		public Vector3Int speciesMask;
 		int unusedSpeciesChannel;
 		public int speciesIndex;

@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: C
   m_EditorClassIdentifier: 
   stepsPerFrame: 2
-  width: 1920
-  height: 1080
+  width: 128
+  height: 128
+  depth: 128
   numAgents: 250000
   spawnMode: 1
   trailWeight: 2

@@ -12,25 +12,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2665318e53759e74db7a2d8238331945, type: 3}
   m_Name: B
   m_EditorClassIdentifier: 
-  stepsPerFrame: 5
-  width: 256
-  height: 256
-  depth: 256
-  numAgents: 250000
+  stepsPerFrame: 1
+  width: 128
+  height: 128
+  depth: 128
+  numAgents: 500000
   spawnMode: 2
   trailWeight: 800
   decayRate: 10
-  diffuseRate: 100
+  diffuseRate: 10
   speciesSettings:
-  - moveSpeed: 5
-    turnSpeed: 30
+  - moveSpeed: 1
+    turnSpeed: 3
     sensorAngleSpacing: 45
-    sensorOffsetDst: 20
-    sensorSize: 1
+    sensorOffsetDst: 25
+    sensorSize: 2
     colour: {r: 1, g: 0, b: 0, a: 1}
   - moveSpeed: 50
     turnSpeed: -90
     sensorAngleSpacing: 112
     sensorOffsetDst: 30
-    sensorSize: 1
-    colour: {r: 0.47160125, g: 0.8301887, b: 0.105731584, a: 0}
+    sensorSize: 2
+    colour: {r: 0.19723403, g: 1, b: 0, a: 1}

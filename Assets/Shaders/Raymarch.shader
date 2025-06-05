@@ -67,18 +67,19 @@ Shader "Custom/Raymarch"
                 [loop]
                 for (int i = 0; i < _StepCount; i++) {
                     // Break if alpha is saturated
-                    if (accumulated.a > 0.95) break;
+                    if (accumulated.a > 0.99) break;
                     
                     // Sample volume texture
                     float4 sample = tex3D(_VolumeTex, currentPos);
-                    
-                    // Calculate absorption using alpha channel for density
-                    float density = sample.a * _Density;
+                    if (length(sample.rgb) < 0.2) continue;
+                    // Use RGB intensity as density (since slime simulation writes to RGB channels)
+                    float density = length(sample.rgb) * _Density;
                     float absorption = exp(-density * stepSize);
                     
-                    // Accumulate color
-                    accumulated.rgb += accumulated.a * sample.rgb * stepSize;
-                    accumulated.a += (1 - accumulated.a) * (1 - absorption);
+                    // Accumulate color with proper alpha blending
+                    float alpha = (1-absorption);
+                    accumulated.rgb += sample.rgb * alpha * stepSize;
+                    accumulated.a += alpha;
                     
                     // Advance position
                     currentPos += viewDir * stepSize;
