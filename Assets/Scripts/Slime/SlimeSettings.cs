@@ -10,7 +10,6 @@ public class SlimeSettings : ScriptableObject
 	[Header("World Dimensions")]
 	public int width = 1280;
 	public int height = 720;
-	public int depth = 100;
 	public int numAgents = 100;
 	public Simulation.SpawnMode spawnMode;
 
@@ -29,7 +28,7 @@ public class SlimeSettings : ScriptableObject
 		public float turnSpeed;
 
 		[Header("Sensor Settings")]
-		public float sensorAngleSpacing;
+		public float sensorAngleDegrees;
 		public float sensorOffsetDst;
 		[Min(1)] public int sensorSize;
 

@@ -10,20 +10,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2665318e53759e74db7a2d8238331945, type: 3}
-  m_Name: A
+  m_Name: New Slime Settings
   m_EditorClassIdentifier: 
   stepsPerFrame: 1
-  width: 1920
-  height: 1080
-  numAgents: 999999
+  width: 1280
+  height: 720
+  numAgents: 100
   spawnMode: 2
-  trailWeight: 10
-  decayRate: 0.3
-  diffuseRate: 10
+  trailWeight: 1
+  decayRate: 1
+  diffuseRate: 1
+  heightScale: 0.02
+  metallicValue: 0
+  smoothnessValue: 0.5
   speciesSettings:
-  - moveSpeed: 100
-    turnSpeed: 10
-    sensorAngleDegrees: 25
-    sensorOffsetDst: 25
-    sensorSize: 2
-    colour: {r: 0.3773585, g: 0.020292033, b: 0.008899963, a: 1}
+  - moveSpeed: 10
+    turnSpeed: 15
+    sensorAngleDegrees: 15
+    sensorOffsetDst: 15
+    sensorSize: 1
+    colour: {r: 1, g: 0, b: 0, a: 1}
