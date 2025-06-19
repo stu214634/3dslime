@@ -19,9 +19,10 @@ MonoBehaviour:
   spawnMode: 2
   trailWeight: 10
   decayRate: 0.3
-  diffuseRate: 10
+  diffuseRate: 25
+  starvationRate: 0.248
   speciesSettings:
-  - moveSpeed: 100
+  - moveSpeed: 15
     turnSpeed: 10
     sensorAngleDegrees: 25
     sensorOffsetDst: 25

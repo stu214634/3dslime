@@ -5,6 +5,8 @@ struct Agent {
 	float angle;
 	int4 speciesMask;
 	int speciesIndex;
+	float health;
+	float3 neuralWeights;
 };
 
 RWStructuredBuffer<Agent> agents;

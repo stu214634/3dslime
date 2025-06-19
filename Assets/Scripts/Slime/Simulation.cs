@@ -106,22 +106,33 @@ public class Simulation : MonoBehaviour
 				angle = randomAngle;
 			}
 
-			Vector3Int speciesMask;
+			Vector4 speciesMask;
 			int speciesIndex = 0;
 			int numSpecies = settings.speciesSettings.Length;
 
 			if (numSpecies == 1)
 			{
-				speciesMask = Vector3Int.one;
+				speciesMask = Vector4.one;
 			}
 			else
 			{
 				int species = Random.Range(1, numSpecies + 1);
 				speciesIndex = species - 1;
-				speciesMask = new Vector3Int((species == 1) ? 1 : 0, (species == 2) ? 1 : 0, (species == 3) ? 1 : 0);
+				speciesMask = new Vector4((species == 1) ? 1 : 0, (species == 2) ? 1 : 0, (species == 3) ? 1 : 0, (species == 4) ? 1 : 0);
 			}
 
-			agents[i] = new Agent() { position = startPos, angle = angle, speciesMask = speciesMask, speciesIndex = speciesIndex };
+					agents[i] = new Agent() { 
+			position = startPos, 
+			angle = angle, 
+			speciesMask = speciesMask, 
+			speciesIndex = speciesIndex,
+			health = 1.0f,
+			neuralWeights = new Vector3(
+				Random.Range(-0.5f, 0.5f), // Forward sensor weight
+				Random.Range(-0.5f, 0.5f), // Left sensor weight  
+				Random.Range(-0.5f, 0.5f)  // Right sensor weight
+			)
+		};
 		}
 
 		ComputeHelper.CreateAndSetBuffer<Agent>(ref agentBuffer, agents, compute, "agents", updateKernel);
@@ -179,6 +190,7 @@ public class Simulation : MonoBehaviour
 		compute.SetFloat("trailWeight", settings.trailWeight);
 		compute.SetFloat("decayRate", settings.decayRate);
 		compute.SetFloat("diffuseRate", settings.diffuseRate);
+		compute.SetFloat("starvationRate", settings.starvationRate);
 		compute.SetInt("numSpecies", speciesSettings.Length);
 
 		ComputeHelper.Dispatch(compute, settings.numAgents, 1, 1, kernelIndex: updateKernel);
@@ -197,8 +209,9 @@ public class Simulation : MonoBehaviour
 	{
 		public Vector2 position;
 		public float angle;
-		public Vector3Int speciesMask;
-		int unusedSpeciesChannel;
+		public Vector4 speciesMask;
 		public int speciesIndex;
+		public float health;
+		public Vector3 neuralWeights; // 3 sensor inputs -> 1 steering output
 	}
 }

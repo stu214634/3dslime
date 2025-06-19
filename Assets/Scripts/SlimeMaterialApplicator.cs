@@ -65,7 +65,7 @@ public class SlimeMaterialApplicator : MonoBehaviour
         // Find simulation if not assigned
         if (slimeSimulation == null)
         {
-            slimeSimulation = FindObjectOfType<Simulation>();
+            slimeSimulation = FindFirstObjectByType<Simulation>();
             if (slimeSimulation == null)
             {
                 Debug.LogWarning("No Simulation found in scene! The slime texture will not update.");

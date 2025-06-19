@@ -17,6 +17,9 @@ public class SlimeSettings : ScriptableObject
 	public float trailWeight = 1;
 	public float decayRate = 1;
 	public float diffuseRate = 1;
+	
+	[Header("Health & Evolution")]
+	[Range(0f, 2f)] public float starvationRate = 0.1f;
 
 	public SpeciesSettings[] speciesSettings;
 

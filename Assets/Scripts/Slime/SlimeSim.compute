@@ -5,6 +5,8 @@ struct Agent {
 	float angle;
 	int4 speciesMask;
 	int speciesIndex;
+	float health;
+	float3 neuralWeights; // 3 sensor inputs -> 1 steering output
 };
 
 struct SpeciesSettings {
@@ -28,6 +30,7 @@ int width;
 int height;
 
 float trailWeight;
+float starvationRate;
 
 float deltaTime;
 float time;
@@ -51,7 +54,6 @@ float scaleToRange01(uint state)
 
 float sense(Agent agent, SpeciesSettings settings, float sensorAngleOffset) {
 	float sensorAngle = agent.angle + sensorAngleOffset;
-	// 2D sensor direction using only horizontal angle
 	float2 sensorDir = float2(cos(sensorAngle), sin(sensorAngle));
 
 	float2 sensorPos = agent.position + sensorDir * settings.sensorOffsetDst;
@@ -73,6 +75,76 @@ float sense(Agent agent, SpeciesSettings settings, float sensorAngleOffset) {
 	return sum;
 }
 
+// Simple neural network: 3 sensor inputs -> 1 steering output
+float neural_network(Agent agent, float3 sensorInputs) {
+	// Normalize inputs to reasonable range
+	float3 inputs = saturate(sensorInputs * 0.1); // Scale down for better training
+	
+	// Simple dot product: weighted sum of inputs
+	float output = dot(inputs, agent.neuralWeights);
+	
+	// Apply activation function (tanh to keep output in -1 to 1 range)
+	return tanh(output);
+}
+
+void respawn_agent(uint id) {
+	// Reset basic properties
+	agents[id].health = 1;
+	
+	// Spawn in a small circle around center for visibility
+	float spawnRadius = min(width, height) * 0.1;
+	float spawnAngle = scaleToRange01(hash(id + time * 100000)) * 2 * 3.14159;
+	agents[id].position = float2(width/2, height/2) + float2(cos(spawnAngle), sin(spawnAngle)) * spawnRadius;
+	agents[id].angle = scaleToRange01(hash(agents[id].position.y * width + agents[id].position.x + hash(id + time * 100000))) * 2 * 3.14159;
+	
+	// Initialize neural network weights by averaging from healthy agents
+	float3 newWeights = float3(0, 0, 0);
+	
+	int healthyCount = 0;
+	int maxSamples = min(50, (int)numAgents); // Reduced sample size
+	
+	// Sample healthy agents for genetic algorithm
+	for (int i = 0; i < maxSamples; i++) {
+		uint sampleIndex = (id + i) % numAgents;
+		if (agents[sampleIndex].health > 0.5) {
+			newWeights += agents[sampleIndex].neuralWeights;
+			healthyCount++;
+		}
+	}
+	
+	// If we found healthy agents, average their weights with mutation
+	if (healthyCount > 0) {
+		float3 avgWeights = newWeights / healthyCount;
+		
+		// Add random mutation to each weight
+		uint randSeed = hash(id + time * 1000);
+		float mutationStrength = 0.1; // Reduced mutation for more stable evolution
+		
+		float3 mutation;
+		randSeed = hash(randSeed);
+		mutation.x = (scaleToRange01(randSeed) - 0.5) * 2.0 * mutationStrength;
+		randSeed = hash(randSeed);
+		mutation.y = (scaleToRange01(randSeed) - 0.5) * 2.0 * mutationStrength;
+		randSeed = hash(randSeed);
+		mutation.z = (scaleToRange01(randSeed) - 0.5) * 2.0 * mutationStrength;
+		
+		agents[id].neuralWeights = avgWeights + mutation;
+	} else {
+		// Fallback to random weights if no healthy agents found
+		uint randSeed = hash(id + time * 1000);
+		
+		float3 randomWeights;
+		randSeed = hash(randSeed);
+		randomWeights.x = (scaleToRange01(randSeed) - 0.5) * 1.0; // Smaller initial range
+		randSeed = hash(randSeed);
+		randomWeights.y = (scaleToRange01(randSeed) - 0.5) * 1.0;
+		randSeed = hash(randSeed);
+		randomWeights.z = (scaleToRange01(randSeed) - 0.5) * 1.0;
+		
+		agents[id].neuralWeights = randomWeights;
+	}
+}
+
 [numthreads(16,1,1)]
 void Update (uint3 id : SV_DispatchThreadID)
 {
@@ -84,34 +156,38 @@ void Update (uint3 id : SV_DispatchThreadID)
 	SpeciesSettings settings = speciesSettings[agent.speciesIndex];
 	float2 pos = agent.position;
 
-	uint random = hash(pos.y * width + pos.x + hash(id.x + time * 100000));
+	float food = TrailMap[int2(pos)];
+	agent.health -= (1.0 - food * 1.0001) * starvationRate;
+	
+	// Write health back to buffer immediately so respawn check works
+	agents[id.x].health = agent.health;
+	
+	if (agent.health <= 0) {
+		respawn_agent(id.x);
+		// Reload the agent data after respawn
+		agent = agents[id.x];
+		pos = agent.position;
+	}
 
-	// Steer based on sensory data - 2D sensing only
+	// Neural network-based steering
 	float sensorAngleRad = settings.sensorAngleDegrees * (3.1415 / 180);
 	float turnSpeed = settings.turnSpeed * 2 * 3.1415;
 	
-	// Forward/Left/Right sensing (2D only)
+	// Get sensor inputs
 	float weightForward = sense(agent, settings, 0);
 	float weightLeft = sense(agent, settings, sensorAngleRad);
 	float weightRight = sense(agent, settings, -sensorAngleRad);
 	
-	float randomSteerStrength = scaleToRange01(random);
+	// Pack sensor data for neural network (forward, left, right)
+	float3 sensorInputs = float3(weightForward, weightLeft, weightRight);
 	
-	// Continue in same direction
-	if (weightForward > weightLeft && weightForward > weightRight) {
-		agents[id.x].angle += 0;
-	}
-	else if (weightForward < weightLeft && weightForward < weightRight) {
-		agents[id.x].angle += (randomSteerStrength - 0.5) * 2 * turnSpeed * deltaTime;
-	}
-	// Turn right
-	else if (weightRight > weightLeft) {
-		agents[id.x].angle -= randomSteerStrength * turnSpeed * deltaTime;
-	}
-	// Turn left
-	else if (weightLeft > weightRight) {
-		agents[id.x].angle += randomSteerStrength * turnSpeed * deltaTime;
-	}
+	// Get steering output from neural network
+	float steeringOutput = neural_network(agent, sensorInputs);
+	
+	// Apply steering directly (output is in range -1 to 1)
+	// Positive = turn right, Negative = turn left
+	float steeringAngle = steeringOutput * turnSpeed * deltaTime;
+	agents[id.x].angle += steeringAngle;
 
 	// Update position
 	float2 direction = float2(cos(agent.angle), sin(agent.angle));
@@ -120,7 +196,7 @@ void Update (uint3 id : SV_DispatchThreadID)
 	
 	// Clamp position to map boundaries, and pick new random move dir if hit boundary
 	if (newPos.x < 0 || newPos.x >= width || newPos.y < 0 || newPos.y >= height) {
-		random = hash(random);
+		uint random = hash(pos.y * width + pos.x + hash(id.x + time * 100000));
 		float randomAngle = scaleToRange01(random) * 2 * 3.1415;
 
 		newPos.x = min(width-1,max(0, newPos.x));

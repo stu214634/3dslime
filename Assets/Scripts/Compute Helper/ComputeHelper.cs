@@ -29,10 +29,8 @@
 			Vector3Int threadGroupSizes = GetThreadGroupSizes(cs, kernelIndex);
 			int numGroupsX = Mathf.CeilToInt(numIterationsX / (float)threadGroupSizes.x);
 			int numGroupsY = Mathf.CeilToInt(numIterationsY / (float)threadGroupSizes.y);
-			int numGroupsZ = Mathf.CeilToInt(numIterationsZ / (float)threadGroupSizes.z); // FIXED: was using threadGroupSizes.y
-			
-			Debug.Log($"[COMPUTE_HELPER] Dispatching kernel {kernelIndex}: iterations({numIterationsX},{numIterationsY},{numIterationsZ}) threadGroups({threadGroupSizes.x},{threadGroupSizes.y},{threadGroupSizes.z}) groups({numGroupsX},{numGroupsY},{numGroupsZ})");
-			
+			int numGroupsZ = Mathf.CeilToInt(numIterationsZ / (float)threadGroupSizes.z);
+
 			cs.Dispatch(kernelIndex, numGroupsX, numGroupsY, numGroupsZ);
 		}
 
